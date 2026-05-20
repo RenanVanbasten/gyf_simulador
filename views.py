@@ -57,5 +57,27 @@ def render_ghg_view(imp):
 def render_frota_view(df, imp):
     st.title("🚛 Gestão de Frota")
     st.subheader("Dados de Passagens")
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.dataframe(df, width="stretch", hide_index=True)
     st.info(f"O uso da Taggy nesta frota já evitou a emissão de {imp['total_co2']/1000:.2f} kg de CO₂.")
+
+
+
+def render_login_view():
+    """Renderiza uma tela de login centralizada e bonita."""
+    _, col_centro, _ = st.columns([1, 1.5, 1])
+    
+    with col_centro:
+        st.markdown("<h1 style='text-align: center;'>🌱 Grow Your Forest</h1>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: gray;'>Gestão de Frotas Sustentáveis</p>", unsafe_allow_html=True)
+        
+        with st.form("form_login"):
+            st.subheader("Acesse sua Conta")
+            email = st.text_input("E-mail")
+            senha = st.text_input("Senha", type="password")
+            botao_entrar = st.form_submit_button("Entrar no Painel", width="stretch")
+            
+            if botao_entrar:
+                return email, senha, True
+                
+    return None, None, False
+    

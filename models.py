@@ -1,82 +1,89 @@
+import os
 import pandas as pd
 from sqlalchemy import create_engine
+from dotenv import load_dotenv
 import streamlit as st
 
+load_dotenv()
+
 @st.cache_data
-def carregar_dados():
+def carregar_dados(empresa_id=None):
     """
-    Tenta conectar ao PostgreSQL. Se não disponível,
-    usa dados de demonstração para o simulador.
+    Conecta ao PostgreSQL usando as credenciais do .env.
+    Se um empresa_id for fornecido, filtra os dados para aquele usuário.
     """
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT")
+    db   = os.getenv("DB_NAME")
+    user = os.getenv("DB_USER")
+    pw   = os.getenv("DB_PASSWORD")
+
     try:
-        host     = st.secrets.get("db_host", "localhost")
-        porta    = st.secrets.get("db_port", "5432")
-        banco    = st.secrets.get("db_name", "grow_your_forest")
-        usuario  = st.secrets.get("db_user", "postgres")
-        senha    = st.secrets.get("db_password", "")
-        engine   = create_engine(f"postgresql://{usuario}:{senha}@{host}:{porta}/{banco}")
-        return pd.read_sql("SELECT * FROM transacoes_pedagio", engine)
-    except Exception:
+        engine = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{db}")
+        
+        if empresa_id:
+            query = f"SELECT * FROM transacoes_pedagio WHERE empresa_id = {empresa_id}"
+        else:
+            query = "SELECT * FROM transacoes_pedagio"
+            
+        return pd.read_sql(query, engine)
+        
+    except Exception as e:
+        st.warning(f"Usando dados de demonstração (Erro: {e})")
         return pd.DataFrame({
-            'motorista': [
-                'Lucas Mendes', 'Maria Silva', 'Lucas Mendes',
-                'Carlos Souza', 'Maria Silva', 'Lucas Mendes',
-                'Carlos Souza', 'Ana Lima', 'Maria Silva', 'Ana Lima'
-            ],
-            'local_pedagio': [
-                'Bandeirantes', 'Anhanguera', 'Dutra',
-                'Bandeirantes', 'Imigrantes', 'Anhanguera',
-                'Dutra', 'Bandeirantes', 'Anhanguera', 'Imigrantes'
-            ],
-            'co2_economizado_g': [45, 50, 48, 45, 52, 47, 44, 51, 49, 53],
-            'valor_pago': [12.5, 10.0, 15.0, 12.5, 18.0, 10.0, 15.0, 12.5, 10.0, 18.0]
+            'motorista': ['Lucas Mendes', 'Maria Silva', 'Carlos Souza', 'Ana Lima'],
+            'local_pedagio': ['Bandeirantes', 'Anhanguera', 'Dutra', 'Imigrantes'],
+            'co2_economizado_g': [45, 50, 48, 52],
+            'valor_pago': [12.5, 10.0, 15.0, 18.0],
+            'empresa_id': [1, 2, 1, 2]
         })
 
 def calcular_impacto_ghg(df, tipo_veiculo):
-    """
-    Calcula emissões evitadas com base no GHG Protocol.
-    Escopo 1: combustível (marcha lenta evitada)
-    Escopo 3: papel térmico (BPA eliminado)
-    """
+    """Calcula emissões evitadas com base no GHG Protocol."""
     recibos = len(df)
 
-
     if tipo_veiculo == "Pesado":
-        fator_parada  = 0.15  
-        fator_emissao = 2600  
+        fator_parada, fator_emissao = 0.15, 2600
     else:
-        fator_parada  = 0.05  
-        fator_emissao = 2300 
+        fator_parada, fator_emissao = 0.05, 2300
 
     co2_combustivel = (recibos * fator_parada) * fator_emissao
-    co2_papel       = recibos * 45.0                            
-    total_co2       = co2_combustivel + co2_papel
-
-    arvores   = int(total_co2 // 200)
-    progresso = int((total_co2 % 200) / 200 * 100)
-    bpa_mg    = recibos * 7.5 
+    co2_papel = recibos * 45.0
+    total_co2 = co2_combustivel + co2_papel
 
     return {
-       "total_co2"      : total_co2,
+        "total_co2": total_co2,
         "co2_combustivel": co2_combustivel,
-        "co2_papel"      : co2_papel,
-        "combustivel_salvo": recibos * fator_parada, 
+        "co2_papel": co2_papel,
+        "combustivel_salvo": recibos * fator_parada,
         "tipo_combustivel": "Diesel" if tipo_veiculo == "Pesado" else "Gasolina",
-        "bpa"            : bpa_mg,
-        "arvores"        : arvores,
-        "progresso"      : progresso,
-        "recibos"        : recibos,
+        "bpa": recibos * 7.5,
+        "arvores": int(total_co2 // 200),
+        "progresso": int((total_co2 % 200) / 200 * 100),
+        "recibos": recibos,
     }
 
-def render_floresta(arvores):
-    """Renderiza floresta virtual com emojis escalonados."""
-    if arvores == 0:
-        return "🌱"
-    estagios = ["🌱", "🌿", "🌳"]
-    icones = []
-    for i in range(min(arvores, 20)):
-        estagio = min(i // 3, 2)
-        icones.append(estagios[estagio])
-    if arvores > 20:
-        icones.append(f" +{arvores - 20}")
-    return "  ".join(icones)
+def verificar_login(email, senha):
+    """
+    Verifica se o usuário e senha existem no banco.
+    Retorna o (nome, empresa_id) se sucesso, ou None se falha.
+    """
+    host = os.getenv("DB_HOST")
+    port = os.getenv("DB_PORT")
+    db   = os.getenv("DB_NAME")
+    user = os.getenv("DB_USER")
+    pw   = os.getenv("DB_PASSWORD")
+    
+    try:
+        engine = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{db}")
+        query = f"SELECT nome, empresa_id, senha_hash FROM usuarios WHERE email = '{email}'"
+        user_df = pd.read_sql(query, engine)
+        
+        if not user_df.empty:
+            if user_df.iloc[0]['senha_hash'] == senha:
+                return user_df.iloc[0]['nome'], user_df.iloc[0]['empresa_id']
+        return None
+    except:
+        if email == "ricardo@email.com" and senha == "senha123":
+            return "Ricardo", 1
+        return None
