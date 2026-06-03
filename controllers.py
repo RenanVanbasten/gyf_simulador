@@ -34,9 +34,7 @@ def main_controller():
             st.rerun()
 
         df = carregar_dados(st.session_state["empresa_id"])
-
         tipo_v, aba = render_sidebar()
-        
         st.sidebar.markdown(f"👤 Gestor: **{st.session_state['usuario_nome']}**")
 
         imp = calcular_impacto_ghg(df, tipo_v)
