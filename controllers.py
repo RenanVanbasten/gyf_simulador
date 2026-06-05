@@ -1,6 +1,6 @@
 import streamlit as st
-from models import carregar_dados, calcular_impacto_ghg, verificar_login
-from views import render_sidebar, render_floresta_view, render_ghg_view, render_frota_view, render_login_view
+from models import carregar_dados, calcular_impacto_ghg, verificar_login, listar_motoristas_banco, salvar_motorista_banco, deletar_motorista_banco
+from views import render_sidebar, render_floresta_view, render_ghg_view, render_frota_view, render_login_view, render_crud_motoristas_view
 
 def main_controller():
     """Controlador principal com gerenciamento de autenticação e sessão."""
@@ -45,3 +45,20 @@ def main_controller():
             render_ghg_view(imp)
         elif aba == "🚛 Gestão de Frota":
             render_frota_view(df, imp)
+        
+        elif aba == "👤 Gerenciar Motoristas":
+            df_motores = listar_motoristas_banco(st.session_state["empresa_id"])
+            
+            acao, dados = render_crud_motoristas_view(df_motores)
+            
+            if acao == "CRIAR":
+                sucesso = salvar_motorista_banco(dados["nome"], dados["cpf"], st.session_state["empresa_id"])
+                if sucesso:
+                    st.success(f"Motorista {dados['nome']} cadastrado com sucesso!")
+                    st.rerun()
+                    
+            elif acao == "DELETAR":
+                sucesso = deletar_motorista_banco(dados["id"])
+                if sucesso:
+                    st.warning("Motorista removido do sistema.")
+                    st.rerun()
