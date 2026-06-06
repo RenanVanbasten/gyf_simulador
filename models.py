@@ -102,7 +102,7 @@ def listar_motoristas_banco(empresa_id):
         return pd.DataFrame(columns=["id", "nome", "cpf"])
 
 def salvar_motorista_banco(nome, cpf, empresa_id):
-    """Insere o motorista e gera viagens automáticas para ele no banco de dados."""
+    """Insere o motorista de forma real e gera suas transações simuladas no banco de dados."""
     host = os.getenv("DB_HOST")
     port = os.getenv("DB_PORT")
     db   = os.getenv("DB_NAME")
@@ -116,13 +116,11 @@ def salvar_motorista_banco(nome, cpf, empresa_id):
         with engine.connect() as conexao:
             from sqlalchemy import text
             
-            # 2. MÁGICA DO MVP: Gera apenas 1 passagem padrão para o motorista não iniciar zerado nos gráficos
-            query_viagens = """
-                INSERT INTO transacoes_pedagio (empresa_id, motorista, local_pedagio, valor_pago, data_passagem) VALUES 
-                (:empresa_id, :nome, 'Dutra', 15.00, '2026-05-20 12:00:00');
+            query_motorista = """
+                INSERT INTO motoristas (nome, cpf, empresa_id) 
+                VALUES (:nome, :cpf, :empresa_id);
             """
-            conexao.execute(text(query_viagens), {"empresa_id": empresa_id_limpo, "nome": nome})
-            
+            conexao.execute(text(query_motorista), {"nome": nome, "cpf": cpf, "empresa_id": empresa_id_limpo})
             
             query_viagens = """
                 INSERT INTO transacoes_pedagio (empresa_id, motorista, local_pedagio, valor_pago, data_passagem) VALUES 
@@ -136,10 +134,11 @@ def salvar_motorista_banco(nome, cpf, empresa_id):
             
         st.cache_data.clear()
         return True
+        
     except Exception as e:
         st.error(f"Erro ao salvar motorista e viagens: {e}")
         return False
-
+    
 def deletar_motorista_banco(motorista_id):
     """Remove um motorista do banco pelo ID."""
     host = os.getenv("DB_HOST")
