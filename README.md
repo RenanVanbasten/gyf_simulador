@@ -1,4 +1,4 @@
-# 🌱 Grow Your Forest — Simulador de Impacto Ambiental
+# 🌱 Grow Your Forest
 
 ## 📌 Visão Geral
 
