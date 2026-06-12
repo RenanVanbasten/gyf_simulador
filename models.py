@@ -140,7 +140,7 @@ def salvar_motorista_banco(nome, cpf, empresa_id):
         return False
     
 def deletar_motorista_banco(motorista_id):
-    """Remove um motorista do banco pelo ID."""
+    """Remove o motorista e todas as suas transações de pedágio vinculadas."""
     host = os.getenv("DB_HOST")
     port = os.getenv("DB_PORT")
     db   = os.getenv("DB_NAME")
@@ -149,12 +149,31 @@ def deletar_motorista_banco(motorista_id):
     
     try:
         engine = create_engine(f"postgresql://{user}:{pw}@{host}:{port}/{db}")
-        query = "DELETE FROM motoristas WHERE id = :id"
+        
         with engine.connect() as conexao:
             from sqlalchemy import text
-            conexao.execute(text(query), {"id": motorista_id})
+            
+            query_busca = text("SELECT nome, empresa_id FROM motoristas WHERE id = :id")
+            resultado = conexao.execute(query_busca, {"id": motorista_id}).fetchone()
+            
+            if resultado:
+                nome_motorista = resultado[0]
+                empresa_id = resultado[1]
+                
+                query_transacoes = text("""
+                    DELETE FROM transacoes_pedagio 
+                    WHERE motorista = :nome AND empresa_id = :empresa_id
+                """)
+                conexao.execute(query_transacoes, {"nome": nome_motorista, "empresa_id": empresa_id})
+            
+            query_motorista = text("DELETE FROM motoristas WHERE id = :id")
+            conexao.execute(query_motorista, {"id": motorista_id})
+            
             conexao.commit()
+            
+        st.cache_data.clear()
         return True
+        
     except Exception as e:
-        st.error(f"Erro ao deletar motorista: {e}")
+        st.error(f"Erro ao deletar motorista e histórico: {e}")
         return False

@@ -258,7 +258,7 @@ def render_evolucao_mensal(df):
     st.plotly_chart(fig, width="stretch")
 
 def render_crud_motoristas_view(df_motoristas):
-    """Renderiza a interface de gerenciamento (CRUD) de motoristas."""
+    """Renderiza a interface de gerenciamento (CRUD) de motoristas com formulários blindados."""
     st.title("👤 Gerenciamento de Motoristas")
     st.markdown("Cadastre, visualize e remova motoristas da sua frota.")
     
@@ -274,7 +274,6 @@ def render_crud_motoristas_view(df_motoristas):
         
         if botao_cadastrar:
             cpf_limpo = cpf.strip() if cpf else ""
-            
             if not nome:
                 st.error("Por favor, insira o nome completo do motorista.")
             elif not cpf_limpo.isdigit() or len(cpf_limpo) != 11:
@@ -291,11 +290,15 @@ def render_crud_motoristas_view(df_motoristas):
     else:
         st.dataframe(df_motoristas[["nome", "cpf"]], width="stretch", hide_index=True)
         
-        st.subheader("Remover Motorista")
-        opcoes = {f"{row['nome']} ({row['cpf']})": row['id'] for _, row in df_motoristas.iterrows()}
-        selecionado = st.selectbox("Selecione o motorista que deseja remover:", list(opcoes.keys()))
+        st.subheader("🗑️ Remover Motorista")
         
-        if st.button("Excluir Motorista Selecionado", type="primary", width="stretch"):
-            return "DELETAR", {"id": opcoes[selecionado]}
+        with st.form("form_remocao_motorista"):
+            opcoes = {f"{row['nome']} ({row['cpf']})": row['id'] for _, row in df_motoristas.iterrows()}
+            selecionado = st.selectbox("Selecione o motorista que deseja remover:", list(opcoes.keys()))
+            
+            botao_excluir = st.form_submit_button("Excluir Motorista Selecionado", type="primary", width="stretch")
+            
+            if botao_excluir:
+                return "DELETAR", {"id": opcoes[selecionado]}
             
     return None, None
